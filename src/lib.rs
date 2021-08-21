@@ -137,13 +137,13 @@ pub(crate) mod parser {
         fn animation_info(input: &[u8]) -> IResult<&[u8], AnimationInfo> {
             let (
                 input,
-                (frame_count, start_frame, loop_frame, unknown0, frame_rate, play_mode, playing, _),
+                (frame_count, start_frame, loop_frame, _, frame_rate, play_mode, playing, _),
             ) = tuple((
                 util::le_u32_as_usize,
                 le_f32,
                 le_f32,
-                le_u32,
-                le_u32,
+                le_f32,
+                le_f32,
                 map_res(le_u32, |play_mode| {
                     FromPrimitive::from_u32(play_mode).ok_or("Unsupported PlayMode.")
                 }),
@@ -157,7 +157,6 @@ pub(crate) mod parser {
                     frame_count,
                     start_frame,
                     loop_frame,
-                    unknown0,
                     frame_rate,
                     play_mode,
                     playing,
@@ -457,8 +456,7 @@ pub struct AnimationInfo {
     pub frame_count: usize,
     pub start_frame: f32,
     pub loop_frame: f32,
-    pub unknown0: u32,
-    pub frame_rate: u32,
+    pub frame_rate: f32,
     pub play_mode: PlayMode,
     pub playing: bool,
 }
