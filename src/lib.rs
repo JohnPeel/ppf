@@ -384,15 +384,18 @@ pub enum TextureFormat {
     R8G8B8,
     A4R4G4B4,
     A1R5G5B5,
-    R5G6B5 = 5,
-    A8 = 7,
-    DXT1 = 9,
+    A0R5G5B5,
+    R5G6B5,
+    A8,
+    L8,
+    // FIXME: This name is weird?
+    AL8,
+    DXT1,
     DXT3,
     DXT5,
-
-    // NOTE: These don't exist in the DirectX SDK used by the game, but do exist in other documentation.
     V8U8,
-    PAL8 = 14,
+    V16U16,
+    PAL8
 }
 
 impl TextureFormat {
@@ -410,13 +413,18 @@ impl TextureFormat {
 
     pub fn bytes_per_pixel(&self) -> usize {
         match *self {
-            TextureFormat::A8R8G8B8 => 4,
+            TextureFormat::A8R8G8B8
+            | TextureFormat::V16U16 => 4,
             TextureFormat::R8G8B8 => 3,
             TextureFormat::A4R4G4B4
             | TextureFormat::A1R5G5B5
+            | TextureFormat::A0R5G5B5
             | TextureFormat::R5G6B5
             | TextureFormat::V8U8 => 2,
-            TextureFormat::A8 | TextureFormat::PAL8 => 1,
+            TextureFormat::L8
+            | TextureFormat::A8
+            | TextureFormat::AL8
+            | TextureFormat::PAL8 => 1,
             _ => unimplemented!(),
         }
     }
