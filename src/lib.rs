@@ -98,7 +98,7 @@ pub(crate) mod parser {
                 }
             }
 
-            let (input, palette) = if format == TextureFormat::R3G3B2P {
+            let (input, palette) = if format == TextureFormat::PAL8 {
                 // FIXME: Figure out what no_idea is.
                 let (input, no_idea) = le_u16(input)?;
                 if no_idea != 0 {
@@ -391,7 +391,7 @@ pub enum TextureFormat {
     DXT3,
     DXT5,
     V8U8,
-    R3G3B2P = 14,
+    PAL8 = 14,
 }
 
 impl TextureFormat {
@@ -415,7 +415,7 @@ impl TextureFormat {
             | TextureFormat::A1R5G5B5
             | TextureFormat::R5G6B5
             | TextureFormat::V8U8 => 2,
-            TextureFormat::A8 | TextureFormat::R3G3B2P => 1,
+            TextureFormat::A8 | TextureFormat::PAL8 => 1,
             _ => unimplemented!(),
         }
     }
