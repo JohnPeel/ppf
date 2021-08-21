@@ -3,6 +3,7 @@ use std::fmt::UpperHex;
 use num_derive::{FromPrimitive, ToPrimitive};
 #[allow(unused_imports)]
 use num_traits::{FromPrimitive, ToPrimitive};
+use serde::{Serialize, Deserialize};
 
 type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -101,7 +102,7 @@ pub(crate) mod parser {
                 // FIXME: Figure out what no_idea is.
                 let (input, no_idea) = le_u16(input)?;
                 if no_idea != 0 {
-                    let (input, palette) = take(0x400usize)(input)?;
+                    let (input, palette) = many_m_n(0x100, 0x100, le_u32)(input)?;
                     (input, Some(palette))
                 } else {
                     (input, None)
@@ -363,7 +364,7 @@ pub(crate) mod parser {
     }
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive, ToPrimitive)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, FromPrimitive, ToPrimitive)]
 #[repr(u16)]
 pub enum Version {
     V0 = 0,
@@ -429,7 +430,7 @@ pub enum TextureType {
     DepthBuffer,
 }
 
-#[derive(Copy, Clone, Debug, FromPrimitive, ToPrimitive)]
+#[derive(Copy, Clone, Debug, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum PlayMode {
     Loop = 0,
@@ -442,7 +443,7 @@ pub enum PlayMode {
     Stop,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AnimationInfo {
     pub frame_count: usize,
     pub start_frame: f32,
@@ -462,7 +463,7 @@ pub struct Texture<'a> {
     pub height: usize,
     pub mipmap_levels: usize,
     pub unknown0: u32,
-    pub palette: Option<&'a [u8]>,
+    pub palette: Option<Vec<u32>>,
     pub texture: &'a [u8],
 }
 
