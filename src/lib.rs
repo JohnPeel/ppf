@@ -99,9 +99,9 @@ pub(crate) mod parser {
             }
 
             let (input, palette) = if format == TextureFormat::PAL8 {
-                // FIXME: Figure out what no_idea is.
-                let (input, no_idea) = le_u16(input)?;
-                if no_idea != 0 {
+                let (input, has_palette) = le_u16(input)?;
+                assert!(has_palette == 0 || has_palette == 1);
+                if has_palette == 1 {
                     let (input, palette) = many_m_n(0x100, 0x100, le_u32)(input)?;
                     (input, Some(palette))
                 } else {
