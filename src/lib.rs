@@ -105,7 +105,7 @@ pub(crate) mod parser {
                     let (input, palette) = many_m_n(0x100, 0x100, le_u32)(input)?;
                     (input, Some(palette))
                 } else {
-                    (input, None)
+                    unimplemented!()
                 }
             } else {
                 (input, None)
@@ -390,6 +390,8 @@ pub enum TextureFormat {
     DXT1 = 9,
     DXT3,
     DXT5,
+
+    // NOTE: These don't exist in the DirectX SDK used by the game, but do exist in other documentation.
     V8U8,
     PAL8 = 14,
 }
