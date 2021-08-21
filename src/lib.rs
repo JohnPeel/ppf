@@ -70,7 +70,7 @@ pub(crate) mod parser {
         fn texture<'a>(input: &'a [u8]) -> IResult<&'a [u8], Texture<'a>> {
             let (
                 input,
-                (_, format, type_, flags, width, height, mut mipmap_levels, _, _, _, unknown0),
+                (_, format, type_, flags, width, height, mut mipmap_levels, _, _, _, _lock_count),
             ) = tuple((
                 le_u32,
                 map_res(le_u32, |format| {
@@ -128,7 +128,6 @@ pub(crate) mod parser {
                     width,
                     height,
                     mipmap_levels,
-                    unknown0,
                     palette,
                     texture,
                 },
@@ -464,7 +463,6 @@ pub struct Texture<'a> {
     pub width: usize,
     pub height: usize,
     pub mipmap_levels: usize,
-    pub unknown0: u32,
     pub palette: Option<Vec<u32>>,
     pub texture: &'a [u8],
 }
