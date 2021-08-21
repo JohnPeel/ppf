@@ -167,9 +167,9 @@ pub(crate) mod parser {
         }
 
         pub fn game_texture<'a>(input: &'a [u8]) -> IResult<&'a [u8], GameTexture<'a>> {
-            let (input, _) = le_u32(input)?; // Ignored.
-            let (input, _unknown_pointer0) = le_u32(input)?;
-            let (input, _status) = le_u32(input)?;
+            let (input, _) = le_u32(input)?; // Ignored by game.
+            let (input, _texture_handle) = le_u32(input)?;
+            let (input, _palette_handle) = le_u32(input)?;
             let (input, path_pointer) = le_u32(input)?;
             let (input, animation_info_pointer) = le_u32(input)?;
             let (input, _unknown) = many_m_n(5, 5, le_u32)(input)?;
