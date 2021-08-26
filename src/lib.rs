@@ -1,4 +1,3 @@
-use std::fmt::UpperHex;
 
 use num_derive::{FromPrimitive, ToPrimitive};
 #[allow(unused_imports)]
@@ -88,6 +87,8 @@ pub(crate) mod parser {
                 le_u32,
                 le_u32,
             ))(input)?;
+            assert!(width > 0);
+            assert!(height > 0);
 
             if mipmap_levels == 0 {
                 let (mut width, mut height) = (width, height);
@@ -105,7 +106,7 @@ pub(crate) mod parser {
                     let (input, palette) = many_m_n(0x100, 0x100, le_u32)(input)?;
                     (input, Some(palette))
                 } else {
-                    unimplemented!()
+                    (input, None)
                 }
             } else {
                 (input, None)
@@ -150,6 +151,10 @@ pub(crate) mod parser {
                 util::le_u8_as_bool,
                 take(3usize),
             ))(input)?;
+            assert!(frame_count > 0);
+            assert!(start_frame >= 0.0);
+            assert!(loop_frame >= 0.0);
+            assert!(frame_rate >= 0.0);
 
             Ok((
                 input,
@@ -166,14 +171,20 @@ pub(crate) mod parser {
 
         pub fn game_texture<'a>(input: &'a [u8]) -> IResult<&'a [u8], GameTexture<'a>> {
             let (input, _) = le_u32(input)?; // Ignored by game.
-            let (input, _texture_handle) = le_u32(input)?;
+            let (input, texture_handle) = le_u32(input)?;
+            assert!(texture_handle > 0);
             let (input, _palette_handle) = le_u32(input)?;
             let (input, path_pointer) = le_u32(input)?;
             let (input, animation_info_pointer) = le_u32(input)?;
-            let (input, _unknown) = many_m_n(5, 5, le_u32)(input)?;
+            let (input, _texture_density) = le_f32(input)?;
+            let (input, _visual_importance) = le_u32(input)?;
+            let (input, _memory_importance) = le_u32(input)?;
+            let (input, _unknown0) = le_u32(input)?;
+            let (input, _flags) = le_u32(input)?;
 
             let (input, path) = if path_pointer != 0 {
                 let (input, path_length) = le_u16(input)?;
+                assert!(path_length > 0);
                 let (input, path) = map_res(take(path_length), std::str::from_utf8)(input)?;
                 (input, Some(&path[..path.len() - 1]))
             } else {
@@ -244,11 +255,13 @@ pub(crate) mod parser {
         many_m_n(count, count, game_texture)(input)
     }
 
-    fn languages<'a>(input: &'a [u8], version: Version) -> IResult<&'a [u8], Vec<Language<'a>>> {
-        let language = |input: &'a [u8]| -> IResult<&'a [u8], Language<'a>> {
+    fn languages<'a>(input: &'a [u8], version: Version) -> IResult<&'a [u8], Vec<(Language, Vec<GameTexture<'a>>)>> {
+        let language = |input: &'a [u8]| -> IResult<&'a [u8], (Language, Vec<GameTexture<'a>>)> {
             let (input, _) = verify(le_u16, |b| b == &0xFFFF)(input)?;
-            let (input, id) = le_u16(input)?;
-            log::info!("language_id = 0x{:02X}", id);
+            let (input, language) = map_res(le_u16, |language| {
+                FromPrimitive::from_u16(language).ok_or("Unsupported Language.")
+            })(input)?;
+            log::info!("language = {:?}", language);
             let (input, block_size) = map_res(le_u32, |size| {
                 Result::<usize, Infallible>::Ok(size as usize)
             })(input)?;
@@ -258,7 +271,7 @@ pub(crate) mod parser {
             let (input, textures) = game_textures(input, version)?;
             assert_eq!(block_size, block_start - input.len());
 
-            Ok((input, (id, textures)))
+            Ok((input, (language, textures)))
         };
         many0(language)(input)
     }
@@ -275,7 +288,7 @@ pub(crate) mod parser {
     }
 
     fn meshes(input: &[u8]) -> IResult<&[u8], Vec<(&str, &[u8])>> {
-        let (input, _) = le_u32(input)?;
+        let (input, _) = tag("MPAK")(input)?;
         let (input, mesh_count) = util::le_u16_as_usize(input)?;
         log::info!("mesh_count = {}", mesh_count);
         many_m_n(mesh_count, mesh_count, mesh)(input)
@@ -327,7 +340,7 @@ pub(crate) mod parser {
     pub fn ppf<'a>(input: &'a [u8]) -> IResult<&'a [u8], Ppf<'a>> {
         let (input, _) = tag("PPAK")(input)?;
         let (input, version) = version(input)?;
-        log::info!("version = 0x{:04X}", version);
+        log::info!("version = {:?}", version);
 
         let (input, languages) = languages(input, version)?;
         let (input, game_textures) = game_textures(input, version)?;
@@ -369,11 +382,13 @@ pub enum Version {
     V1,
 }
 
-impl UpperHex for Version {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let version = ToPrimitive::to_u16(self).unwrap();
-        <u16 as UpperHex>::fmt(&version, f)
-    }
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, FromPrimitive, ToPrimitive)]
+#[repr(u16)]
+pub enum Language {
+    English = 0,
+    French,
+    German,
+    Nonsense
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, FromPrimitive, ToPrimitive)]
@@ -383,7 +398,7 @@ pub enum TextureFormat {
     R8G8B8,
     A4R4G4B4,
     A1R5G5B5,
-    A0R5G5B5,
+    X1R5G5B5,
     R5G6B5,
     A8,
     L8,
@@ -417,7 +432,7 @@ impl TextureFormat {
             TextureFormat::R8G8B8 => 3,
             TextureFormat::A4R4G4B4
             | TextureFormat::A1R5G5B5
-            | TextureFormat::A0R5G5B5
+            | TextureFormat::X1R5G5B5
             | TextureFormat::R5G6B5
             | TextureFormat::V8U8 => 2,
             TextureFormat::L8
@@ -480,12 +495,10 @@ pub struct GameTexture<'a> {
     pub textures: Vec<Texture<'a>>,
 }
 
-pub type Language<'a> = (u16, Vec<GameTexture<'a>>);
-
 #[derive(Debug)]
 pub struct Ppf<'a> {
     pub version: Version,
-    pub languages: Vec<Language<'a>>,
+    pub languages: Vec<(Language, Vec<GameTexture<'a>>)>,
     pub game_textures: Vec<GameTexture<'a>>,
     pub meshes: Vec<(&'a str, &'a [u8])>,
     pub scripts_version: u16,
@@ -494,12 +507,11 @@ pub struct Ppf<'a> {
 }
 
 impl<'a> Ppf<'a> {
-    pub fn from_slice(slice: &'a [u8]) -> Result<(Ppf<'a>, &[u8]), BoxError> {
-        parser::ppf(slice).map(|(input, ppf)| (ppf, input))
-            .map_err(|err| {
-                log::error!("{}", err);
-                "Unable to parse ppf from slice.".into()
-            })
+    pub fn from_slice(slice: &'a [u8]) -> Result<Ppf<'a>, BoxError> {
+        let (remaining, ppf) = parser::ppf(slice)
+            .map_err::<BoxError, _>(|_err| "Unable to parse ppf.".into())?;
+        assert_eq!(0, remaining.len());
+        Ok(ppf)
     }
 }
 
